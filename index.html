@@ -9,7 +9,7 @@
 
     #graph {
         width: 100%;
-        height: 100vh;        
+        height: 100vh;
     }
 
     p {
@@ -17,19 +17,22 @@
     }
 
     .measure-name {
-        font-size: 12px;
-        color: grey;
+        font-size: 16px;
+        font-weight: bold;
     }
 
     .tip-content {
-        font-size: 12px;
+        font-size: 16px;
+        color: grey;
     }
 </style>
 <script src="https://d3js.org/d3.v4.js"></script>
 <div id="graph"></div>
 <script>
     let data = [],
-        colorList = ["#e5f4f7", "#b0dfe8", "#7bc9d8", "#46b4c9", "#119eb9", "#0d8ca7", "#097996", "#046784", "005472"];
+        singleColors = ["#e5f4f7", "#b0dfe8", "#7bc9d8", "#46b4c9", "#119eb9", "#0d8ca7", "#097996", "#046784", "005472", "#e5f4f7", "#b0dfe8", "#7bc9d8", "#46b4c9", "#119eb9", "#0d8ca7", "#097996", "#046784", "005472"],
+        fullColors = ["#a4517b", "#d75a3b", "#47a9b2", "#fffad9", "#4cb8d5", "#58f3af", "#feb8cf", "#007693", "#ea9865", "#a4517b", "#d75a3b", "#47a9b2", "#fffad9", "#4cb8d5", "#58f3af", "#feb8cf", "#007693", "#ea9865"],
+        patterns = [];
 
     // set the dimensions and margins of the graph
     let containerWidth = d3.select("#graph").style("width"),
@@ -37,13 +40,15 @@
 
     const filename = getUrlParam('file', ""),
         re_filename = filename.replace(/~/g, '&'),
-        dim1 = getUrlParam('dim1', ""),
-        dim2 = getUrlParam('dim2', ""),
-        m = getUrlParam('m', ""),
-        fill = getUrlParam('fill', ""),
-        end = getUrlParam('end', "");
+        dim1 = getUrlParam('dim1', "") - 1,
+        dim2 = getUrlParam('dim2', "") - 1,
+        m = getUrlParam('m', "") - 1,
+        fill = getUrlParam('fill', 'single'),
+        end = getUrlParam('end', ""),
+        sorttype = getUrlParam('sort', ""),
+        legend = getUrlParam('legend', "right");
 
-    appendGroupBar(re_filename, dim1, dim2, m, fill, end);
+    appendGroupBar(re_filename, dim1, dim2, m, fill, end, sorttype, legend);
 
     function getUrlParam(parameter, defaultvalue) {
         let urlparameter = defaultvalue;
@@ -99,12 +104,53 @@
         return (num / si[i].value).toFixed(digits).replace(rx, "$1") + si[i].symbol;
     }
 
-    function appendGroupBar(filename, dim1, dim2, m, fill, end) {
+    function sorted(arr, kind) {
+        let columns = arr.columns;
+        const nested = d3.nest()
+            .key(d => d[columns[dim1]])
+            .entries(arr);
+        let re_arr = [];
+        // console.log(nested, 'nested')
+        // if(kind === 'htol' || kind === 'ltoh') {
+        //     nested.forEach(n => {
+        //         n.values.sort((a, b) => kind === 'htol' ? b[columns[m]] - a[columns[m]] : a[columns[m]] - b[columns[m]]);
+        //         n.values.forEach(nv => {
+        //             re_arr.push(nv);
+        //         })                
+        //     })            
+        // }
+        if(kind === 'atoz' || kind === 'ztoa'){            
+            nested.forEach(n => {
+                
+                n.values.sort((a, b) => {
+                    if(kind === 'atoz') {
+                        if(a[columns[dim2]] < b[columns[dim2]]) { return -1; }
+                        if(a[columns[dim2]] > b[columns[dim2]]) { return 1; }                        
+                    }else {
+                        if(a[columns[dim2]] < b[columns[dim2]]) { return 1; }
+                        if(a[columns[dim2]] > b[columns[dim2]]) { return -1; }                        
+                    }                    
+                });
+                    
+                n.values.forEach(nv => {
+                    re_arr.push(nv);
+                })                
+            })
+            
+        }
+
+        console.log(d3.map(re_arr, d => d[columns[dim2]]).keys(), 'nnnn')
+        return {
+            subgroups: d3.map(re_arr, d => d[columns[dim2]]).keys(),
+            data: re_arr
+        }
+    }
+    function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
 
         d3.csv(filename, function (data) {
             console.log(data, 'ddd')
             const limit_bar_width = 10, label_available = 60;
-            let margin = {top: 50, right: 30, bottom: 70, left: 30},
+            let margin = {top: 100, right: 100, bottom: 100, left: 100},
                 width = parseInt(containerWidth) - margin.left - margin.right,
                 height = parseInt(containerHeight) - margin.top - margin.bottom;
 
@@ -113,8 +159,12 @@
                 subgroups = d3.map(data, d => d[columns[dim2]]).keys(),
                 counts = groups.length * subgroups.length,
                 c_width = width / counts;
-            console.log(c_width, 'c_width');
-            if(c_width < limit_bar_width) {
+
+            const sortedData = sorted(data, sorttype);
+            let dd = sortedData.data;
+            subgroups = sortedData.subgroups;
+            
+            if (c_width < limit_bar_width) {
                 d3.select("#graph").style("width", margin.left + margin.right + counts * limit_bar_width + "px");
                 containerWidth = d3.select("#graph").style("width");
                 width = parseInt(containerWidth) - margin.left - margin.right
@@ -137,29 +187,34 @@
                 .style("padding", "4px")
                 .style("visibility", "hidden");
 
+            const defs = svg.append("defs");
+            const filter = defs.append("filter")
+                .attr("id", "drop-shadow")
+                .attr("height", "500%");
+            filter.append("feGaussianBlur")
+                .attr("in", "SourceAlpha")
+                .attr("stdDeviation", 13)
+                .attr("result", "blur");
+
+            filter.append("feOffset")
+                .attr("in", "blur")
+                .attr("dy", 8.1)
+                .attr("result", "offsetBlur");
+            const feMerge = filter.append("feMerge");
+            feMerge.append("feMergeNode")
+                .attr("in", "offsetBlur")
+            feMerge.append("feMergeNode")
+                .attr("in", "SourceGraphic");
+
+            const maxY = Math.max(...dd.map(d => d[columns[m]]));
             // Add X axis
             const x = d3.scaleBand()
                 .domain(groups)
                 .range([0, width])
                 .padding([0.2]);
-
-            const axisX = svg.append("g")
-                .attr("transform", "translate(0," + height + ")")
-                .call(d3.axisBottom(x).tickSize(0));
-            axisX.selectAll("text").attr("font-family", "Nunito Sans").attr("font-size", 14).style("opacity", c_width >= label_available ? 1 : 0)
-            axisX.select(".domain").style("box-shadow", "0 -10px rgba(0, 0, 0, 0.15)")
-            // Add Y axis
-            const maxY = Math.max(...data.map(d => d[columns[m]]));
-
             const y = d3.scaleLinear()
                 .domain([0, maxY])
                 .range([height, 0]);
-
-            const axisY = svg.append("g")
-                .call(d3.axisLeft(y));
-
-            axisY.selectAll(".tick").remove();
-            axisY.select(".domain").remove();
 
             const xSubgroup = d3.scaleBand()
                 .domain(subgroups)
@@ -167,9 +222,14 @@
                 .padding([0.05])
 
             // color palette = one color per subgroup
+
             const color = d3.scaleOrdinal()
                 .domain(subgroups)
-                .range(colorList)
+                .range(
+                    fill === 'single' ? singleColors 
+                    : fill === 'full' ? fullColors 
+                    : patterns
+                )
 
             // Show the bars
             const bar_group = svg.append("g")
@@ -179,37 +239,42 @@
                 .append("g")
                 .attr("transform", d => `translate(${x(d)}, ${height})`);
 
+            const band = xSubgroup.bandwidth(), r = band * 0.3;
             bar_group.selectAll("path")
-                .data(d => data.filter(e => e[columns[dim1]] === d))
+                .data(d => dd.filter(e => e[columns[dim1]] === d))
                 .enter().append("path")
+                .attr("class", d => `path-${d[columns[dim1]]}`)
                 .attr("d", d => {
-                    const x_pos = xSubgroup(d[columns[dim2]]),
-                        bar_h = height - y(d[columns[m]]),
-                        band = xSubgroup.bandwidth(),
-                        r = band * 0.3;
-                    if (bar_h < r) return;
-                    return end === "square" ? `M${x_pos}, 0v${-bar_h}h${band}v${bar_h}h${-band}z`
+                    let x_pos = xSubgroup(d[columns[dim2]]),
+                        bar_h = height - y(d[columns[m]]);
+
+                    if (bar_h < r) bar_h = r;
+                    return end === "straight" ? `M${x_pos}, 0v${-bar_h}h${band}v${bar_h}h${-band}z`
                         : `M${x_pos}, 0v${-bar_h + r}q0, -${r}, ${r}, -${r} h${band - r * 2}q${r}, 0, ${r}, ${r}v${bar_h - r}h${-band}z`
                 })
                 .attr("fill", d => color(d[columns[dim2]]))
-                .on("mouseover", function (d) {
-                    const bbox = this.getBoundingClientRect();
-                    tooltip.html(
-                        `<p class="measure-name">${columns[m]}</p>
-                             <p class="tip-content">${d[columns[dim2]]}</p>
-                             <p class="tip-content">${d[columns[m]]}</p>`
-                    )
+                .style("opacity", 0.8)
+                .on("mouseover", function (d) {                    
+                    d3.select(this).style("opacity", 1);
+
+                    tooltip
+                        .html(
+                            `<p class="measure-name">${d[columns[dim2]]}</p>
+                            <p class="tip-content">${Formatter(d[columns[m]])}</p>`
+                        )
                         .style("visibility", "visible")
                         .style("border", `2px solid ${color(d[columns[dim2]])}`)
-                        .style("left", bbox.x + xSubgroup.bandwidth() / 2 + "px")
-                        .style("top", d3.event.pageY - 28 + "px");
+                        .style("left", margin.left + x(d[columns[dim1]]) + xSubgroup(d[columns[dim2]]) + xSubgroup.bandwidth() / 2 + "px")
+                        .style("top", d3.event.pageY - 80 + "px");
                 })
-                .on("mouseout", () => {
+                .on("mouseout", function (d) {
+                    d3.select(this).style("opacity", 0.8);
                     tooltip.style("visibility", "hidden")
                 });
 
+
             bar_group.selectAll("text.subcategory")
-                .data(d => data.filter(e => e[columns[dim1]] === d))
+                .data(d => dd.filter(e => e[columns[dim1]] === d))
                 .enter().append("text")
                 .attr('class', "subcategory")
                 .attr("alignment-baseline", "central")
@@ -217,26 +282,27 @@
                 .attr('font-family', "Nunito Sans")
                 .attr('font-weight', "bold")
                 .attr("transform", d => `translate(${xSubgroup(d[columns[dim2]]) + xSubgroup.bandwidth() / 2}, 0)rotate(-90)`)
-                .style("opacity", c_width >= label_available ? 1 : 0)
+                .style("opacity", c_width >= label_available && legend === 'inline' ? 1 : 0)
                 .text(d => d[columns[dim2]]);
 
             let subgroupLengths = [];
             bar_group.selectAll("text.subcategory")
                 .each(function (d) {
-                    const text_width = this.getComputedTextLength(),
-                        bar_height = height - y(d[columns[m]]);
+                    let text_width = this.getComputedTextLength(),
+                        bar_h = height - y(d[columns[m]]);
 
                     subgroupLengths.push(text_width);
 
-                    if (text_width * 2 > bar_height) {
-                        d3.select(this).attr("x", height - y(d[columns[m]]) + 10);
+                    if (text_width * 2 > bar_h) {
+                        if (bar_h < r) bar_h = r;
+                        d3.select(this).attr("x", bar_h + 10);
                     } else {
                         d3.select(this).attr("x", 10);
                     }
                 });
 
             bar_group.selectAll("text.value")
-                .data(d => data.filter(e => e[columns[dim1]] === d))
+                .data(d => dd.filter(e => e[columns[dim1]] === d))
                 .enter().append("text")
                 .attr('class', 'value')
                 .attr("x", d => xSubgroup(d[columns[dim2]]) + xSubgroup.bandwidth() / 2)
@@ -244,23 +310,163 @@
                 .attr("alignment-baseline", "hanging")
                 .attr('font-family', "Nunito Sans")
                 .attr('font-size', 14)
+                .attr('font-weight', 'bold')
                 .style("opacity", c_width >= label_available ? 1 : 0)
                 .text(d => Formatter(d[columns[m]]));
 
             bar_group.selectAll("text.value")
                 .each(function (d) {
-                    const text_width = this.getComputedTextLength(),
-                        bar_height = height - y(d[columns[m]]),
+                    let text_width = this.getComputedTextLength(),
+                        bar_h = height - y(d[columns[m]]),
                         max_sub = Math.max(...subgroupLengths);
-
-                    if (max_sub * 2 > bar_height) {
-
-                        d3.select(this).attr("y", -height + y(d[columns[m]]) - max_sub * 2);
+                    
+                    if (max_sub * 2 > bar_h) {
+                        if (bar_h < r) bar_h = r;
+                        d3.select(this).attr("y", -16);
                     } else {
-                        d3.select(this).attr("y", -height + y(d[columns[m]]) + 10);
+                        d3.select(this).attr("y", -bar_h + 10);
                     }
                 });
-        })
-    }    
+            //append rect for shadow effect
+            svg.selectAll("rect")
+                .data(groups)
+                .enter().append("rect")
+                .attr("x", d => x(d) - 5)
+                .attr("y", d => -height - 10)
+                .attr("width", x.bandwidth() + 10)
+                .attr("height", 10)
+                .attr("fill", "white")
+                .attr('transform', 'scale(1, -1)')
+                .style("filter", "url(#drop-shadow)")
+            svg.append("rect")
+                .attr("x", 0)
+                .attr("y", height)
+                .attr("width", width)
+                .attr('fill', "white")
+                .attr("height", 10)
 
+            const axisX = svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x).tickSize(0));
+            axisX.selectAll("text").attr("font-family", "Nunito Sans").attr("font-size", 14).style("opacity", c_width >= label_available ? 1 : 0)
+            axisX.select(".domain").style("box-shadow", "0 -10px rgba(0, 0, 0, 0.15)")
+            axisX.select(".domain").remove();
+            // Add Y axis
+
+
+
+            const axisY = svg.append("g")
+                .call(d3.axisLeft(y));
+
+            axisY.selectAll(".tick").remove();
+            axisY.select(".domain").remove();
+            
+
+            //add legend
+            let legendG = null, each = null;
+            switch (legend) {
+                case "top":
+                    legendG = svg.append("g")
+                        .attr('class', 'legendGroup')
+                        .attr('transform', `translate(${margin.left}, ${-margin.top/2})`);
+
+                    each = legendG.selectAll("g.legends")
+                        .data(subgroups)
+                        .enter().append("g");
+                    
+                    each.append("rect")
+                        .attr("x", (_, i) => i * 180)
+                        .attr("y", -10)
+                        .attr("width", 20)
+                        .attr("height", 20)
+                        .attr("fill", d => color(d));
+
+                    each.append("text")
+                        .attr("x", (_, i) => i * 180 + 25)
+                        .attr("text-anchor", "start")
+                        .attr("alignment-baseline", "central")
+                        .attr("font-size", "14")
+                        .attr("fill", "black")                        
+                        .text(d => trunc(d, 10));
+                break;
+                case "bottom":
+                    legendG = svg.append("g")
+                        .attr('class', 'legendGroup')
+                        .attr('transform', `translate(${margin.left}, ${height + margin.bottom/2})`);
+
+                    each = legendG.selectAll("g.legends")
+                        .data(subgroups)
+                        .enter().append("g");
+                    
+                    each.append("rect")
+                        .attr("x", (_, i) => i * 180)
+                        .attr("y", -10)
+                        .attr("width", 20)
+                        .attr("height", 20)
+                        .attr("fill", d => color(d));
+
+                    each.append("text")
+                        .attr("x", (_, i) => i * 180 + 25)
+                        .attr("text-anchor", "start")
+                        .attr("font-size", "14")
+                        .attr("alignment-baseline", "central")
+                        .attr("fill", "black")                        
+                        .text(d => trunc(d, 10));
+                break;
+                case "left":
+                    legendG = svg.append("g")
+                        .attr('class', 'legendGroup')
+                        .attr('transform', `translate(${-margin.left*2/3}, 0)`);
+
+                    each = legendG.selectAll("g.legends")
+                        .data(subgroups)
+                        .enter().append("g");
+                    
+                    each.append("rect")                        
+                        .attr("y", (_, i) => i * 30 - 10)
+                        .attr("width", 20)
+                        .attr("height", 20)
+                        .attr("fill", d => color(d));
+
+                    each.append("text")
+                        .attr("x", 25)
+                        .attr("y", (_, i) => i * 30)
+                        .attr("text-anchor", "start")
+                        .attr("font-size", "14")
+                        .attr("alignment-baseline", "central")
+                        .attr("fill", "black")                        
+                        .text(d => trunc(d, 10));
+                break;
+                case "right":
+                    legendG = svg.append("g")
+                        .attr('class', 'legendGroup')
+                        .attr('transform', `translate(${width - margin.right * 2 / 3}, 0)`);
+
+                    each = legendG.selectAll("g.legends")
+                        .data(subgroups)
+                        .enter().append("g");
+                    
+                    each.append("rect")                        
+                        .attr("y", (_, i) => i * 30 - 10)
+                        .attr("width", 20)
+                        .attr("height", 20)
+                        .attr("fill", d => color(d));
+
+                    each.append("text")
+                        .attr("x", 25)
+                        .attr("y", (_, i) => i * 30)
+                        .attr("text-anchor", "start")
+                        .attr("font-size", "14")
+                        .attr("alignment-baseline", "central")
+                        .attr("fill", "black")                        
+                        .text(d => trunc(d, 10));
+                break;
+            }
+        })
+    }
+
+    function trunc(str, length){
+        let dots = str.length > length ? '...' : '';
+        return str.substring(0, length) + dots;
+    };
 </script>
