@@ -94,7 +94,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
         bar_group.selectAll("path")
             .data(d => dd.filter(e => e[columns[dim1]] === d))
             .enter().append("path")
-            .attr("class", d => `path-${d[columns[dim1]]}`)
+            .attr("class", d => `path-bars _${d[columns[dim2]]}`)
             .attr("stroke", fill === 'pattern' ? "#119eb9" : 'none')
             .attr("d", d => {
                 let x_pos = xSubgroup(d[columns[dim2]]),
@@ -117,11 +117,18 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                     : `M${x_pos}, 0v${-bar_h + r}q0, -${r}, ${r}, -${r} h${band - r * 2}q${r}, 0, ${r}, ${r}v${bar_h - r}h${-band}z`
             })
         bar_group.selectAll("path")
-            .on("mouseover", function (d) {                    
+            .on("mouseover", function (d) {                
                 d3.select(this).style("opacity", 1);
-                svg.selectAll(`.path-${d[columns[dim1]]}`)
-                    .each(function (d) {
-                        d3.select(this).style("opacity", 0.1);
+                svg.selectAll(`.path-bars`)
+                    .each(function (e) {
+                        let classes = d3.select(this).attr('class').split("_");
+                        console.log(d[columns[dim2]],classes[1], 'pass here!')
+                        if(d[columns[dim2]] === classes[1]){
+                            
+                            d3.select(this).style("opacity", 1);
+                        }else{
+                            d3.select(this).style("opacity", 0.3);
+                        }
                     });
                 
 
@@ -138,7 +145,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                     .style("top", d3.event.pageY + "px");
             })
             .on("mouseout", function (d) {
-                svg.selectAll(`.path-${d[columns[dim1]]}`)
+                svg.selectAll(`.path-bars`)
                     .each(function (d) {
                         d3.select(this).style("opacity", 1);
                     });
@@ -261,7 +268,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                     .attr("y", -10)
                     .attr("width", 20)
                     .attr("height", 20)
-                    .attr("fill", d => color(d));
+                    .attr("fill", (d, i) => fill === 'pattern' ? `url('#${patterns[i]}')` : color(d));
 
                 each.append("text")
                     .attr("x", (_, i) => i * 180 + 25)
@@ -285,7 +292,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                     .attr("y", -10)
                     .attr("width", 20)
                     .attr("height", 20)
-                    .attr("fill", d => color(d));
+                    .attr("fill", (d, i) => fill === 'pattern' ? `url('#${patterns[i]}')` : color(d));
 
                 each.append("text")
                     .attr("x", (_, i) => i * 180 + 25)
@@ -308,7 +315,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                     .attr("y", (_, i) => i * 30 - 10)
                     .attr("width", 20)
                     .attr("height", 20)
-                    .attr("fill", d => color(d));
+                    .attr("fill", (d, i) => fill === 'pattern' ? `url('#${patterns[i]}')` : color(d));
 
                 each.append("text")
                     .attr("x", 25)
@@ -332,7 +339,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                     .attr("y", (_, i) => i * 30 - 10)
                     .attr("width", 20)
                     .attr("height", 20)
-                    .attr("fill", d => color(d));
+                    .attr("fill", (d, i) => fill === 'pattern' ? `url('#${patterns[i]}')` : color(d));
 
                 each.append("text")
                     .attr("x", 25)
