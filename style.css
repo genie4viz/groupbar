@@ -21,3 +21,45 @@ p {
     font-size: 16px;
     color: grey;
 }
+
+.legend-text {
+    font-size: 16px;
+}
+
+.collapsible {
+    background-color: #777;
+    color: white;
+    cursor: pointer;
+    padding: 18px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+}
+button {
+    padding: 2px 4px !important;
+    width: auto !important;
+}
+.active, .collapsible:hover {
+    background-color: #555;
+}
+
+.content {    
+    display: none;
+    overflow: hidden;
+}
+
+.d3-tip {
+    line-height: 1;
+    padding: 8px;    
+    border-radius: 2px;
+  }
+  
+
+  /* Style northward tooltips differently */
+  .d3-tip.n:after {
+    margin: -1px 0 0 0;
+    top: 100%;
+    left: 0;
+  }

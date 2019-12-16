@@ -24,7 +24,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
     d3.csv(filename, function (data) {
         console.log(data, 'ddd')
         const limit_bar_width = 10, label_available = 60;
-        let margin = {top: 100, right: 100, bottom: 100, left: 100},
+        let margin = {top: 150, right: 150, bottom: 200, left: 150},
             width = parseInt(containerWidth) - margin.left - margin.right,
             height = parseInt(containerHeight) - margin.top - margin.bottom;
 
@@ -37,17 +37,17 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
         const sortedData = sorted(data, sorttype);
         let dd = sortedData.data;
         subgroups = sortedData.subgroups;
+
+        const color = d3.scaleOrdinal()
+            .domain(subgroups)
+            .range(fill === 'single' ? singleColors : fullColors)        
         
-        if (c_width < limit_bar_width) {
-            d3.select("#graph").style("width", margin.left + margin.right + counts * limit_bar_width + "px");
-            containerWidth = d3.select("#graph").style("width");
-            width = parseInt(containerWidth) - margin.left - margin.right
-        }
 
         // append the svg object to the body of the page
         d3.select("#graph").select("*").remove();
         let svg = d3.select("#graph")
             .append("svg")
+            .attr("id", "svgGraph")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
@@ -56,13 +56,11 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                 
         svg = appendFilterAndPattern(svg);
 
-        const tooltip = d3.select("#graph").append("div")
-            .style("position", "absolute")
-            .style("border", "2px solid grey")
-            .style("background", "rgba(255, 255, 255, 0.9)")
-            .style("padding", "4px")
-            .style("visibility", "hidden");
-
+        const tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .offset([-10, 0]);
+            
+        svg.call(tip);
         const maxY = Math.max(...dd.map(d => d[columns[m]]));
         // Add X axis
         const x = d3.scaleBand()
@@ -77,10 +75,6 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
             .domain(subgroups)
             .range([0, x.bandwidth()])
             .padding([0.05])
-
-        const color = d3.scaleOrdinal()
-            .domain(subgroups)
-            .range(fill === 'single' ? singleColors : fullColors)
 
         // Show the bars
         const bar_group = svg.append("g")
@@ -121,10 +115,8 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                 d3.select(this).style("opacity", 1);
                 svg.selectAll(`.path-bars`)
                     .each(function (e) {
-                        let classes = d3.select(this).attr('class').split("_");
-                        console.log(d[columns[dim2]],classes[1], 'pass here!')
+                        let classes = d3.select(this).attr('class').split("_");                        
                         if(d[columns[dim2]] === classes[1]){
-                            
                             d3.select(this).style("opacity", 1);
                         }else{
                             d3.select(this).style("opacity", 0.3);
@@ -132,24 +124,19 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                     });
                 
 
-                d3.select(this).style("opacity", 1);
-                tooltip
-                    .html(
-                        `<p class="measure-name">${d[columns[dim2]]}</p>
-                        <p class="tip-content">${Formatter(d[columns[m]])}</p>`
-                    )
-                    .style("visibility", "visible")
-                    .style("border", fill === 'pattern' ? `2px solid #119eb9` : `2px solid ${color(d[columns[dim2]])}`)
-                    .style("left", d3.event.pageX + "px")
-                    // .style("left", margin.left + x(d[columns[dim1]]) + xSubgroup(d[columns[dim2]]) + xSubgroup.bandwidth() / 2 + "px")
-                    .style("top", d3.event.pageY + "px");
+                d3.select(this).style("opacity", 1);                
+                tip.html(`<div style="padding: 4px;border:${fill === 'pattern' ? `2px solid #119eb9` : `2px solid ${color(d[columns[dim2]])}`}">
+                        <p class="measure-name">${d[columns[dim2]]}</p>
+                        <p class="tip-content">${Formatter(d[columns[m]])}</p>
+                        </div>`)                    
+                tip.show();                
             })
             .on("mouseout", function (d) {
                 svg.selectAll(`.path-bars`)
                     .each(function (d) {
                         d3.select(this).style("opacity", 1);
                     });
-                tooltip.style("visibility", "hidden")
+                tip.hide();
             });
 
         bar_group.selectAll("text.subcategory")
@@ -162,6 +149,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
             .attr('font-weight', "bold")
             .attr("transform", d => `translate(${xSubgroup(d[columns[dim2]]) + xSubgroup.bandwidth() / 2}, 20)rotate(-90)`)
             .style("opacity", 0)
+            .style("pointer-events", "none")
             .text(d => d[columns[dim2]]);
 
         let subgroupLengths = [];
@@ -197,6 +185,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
             .attr('font-size', 18)
             .attr('font-weight', 'bold')
             .style("opacity", 0)
+            .style("pointer-events", "none")
             .text(d => Formatter(d[columns[m]]));
         
         bar_group.selectAll("text.value")
@@ -240,7 +229,7 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
         const axisX = svg.append("g")
             .attr("transform", "translate(0," + height + ")")
             .call(d3.axisBottom(x).tickSize(0));
-        axisX.selectAll("text").attr("font-family", "Nunito Sans").attr('font-size', 18).style("opacity", c_width >= label_available ? 1 : 0)
+        axisX.selectAll("text").attr("font-family", "Nunito Sans").attr('font-size', 16).call(wrap, 140)
         axisX.select(".domain").style("box-shadow", "0 -10px rgba(0, 0, 0, 0.15)")
         axisX.select(".domain").remove();
         // Add Y axis
@@ -250,106 +239,259 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
 
         axisY.selectAll(".tick").remove();
         axisY.select(".domain").remove();
-
+        
         //add legend
-        let legendG = null, each = null;
+        const legendDiv = d3.select("#graph").append("div")
+            .attr("id", "legend-area")
+            .style("position", "absolute");
+        let strLegends = '',
+            strInClasp = '',
+            strClasp = '',            
+            lengend_width = 135,
+            legend_counts_in_row = Math.floor(width/lengend_width),
+            td_h = 40,
+            actual_h = 0,
+            visual_h = 0;
+            console.log(legend_counts_in_row, 'pp')
+
         switch (legend) {
             case "top":
-                legendG = svg.append("g")
-                    .attr('class', 'legendGroup')
-                    .attr('transform', `translate(${margin.left}, ${-margin.top/2})`);
-
-                each = legendG.selectAll("g.legends")
-                    .data(subgroups)
-                    .enter().append("g");
+                strLegends += `<table>`;
+                strLegends += `<tr style="height:${td_h}px;">`;
+                strInClasp += `<table>`;
+                if(subgroups.length <= legend_counts_in_row) {
+                    legend_counts_in_row = subgroups.length;
+                }
+                for(let i = 0; i < legend_counts_in_row; i++) {                    
+                    strLegends += `
+                            <td>
+                                <svg width="15px" height="15px">
+                                    <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                    </rect>
+                                </svg>
+                            </td>
+                            <td class="legend-text" style="width:${lengend_width}px">
+                                ${subgroups[i]}
+                            </td>`;
+                }
+                strLegends += `</tr></table>`;
                 
-                each.append("rect")
-                    .attr("x", (_, i) => i * 180)
-                    .attr("y", -10)
-                    .attr("width", 20)
-                    .attr("height", 20)
-                    .attr("fill", (d, i) => fill === 'pattern' ? `url('#${patterns[i]}')` : color(d));
-
-                each.append("text")
-                    .attr("x", (_, i) => i * 180 + 25)
-                    .attr("text-anchor", "start")
-                    .attr("alignment-baseline", "central")
-                    .attr("font-size", "14")
-                    .attr("fill", "black")                        
-                    .text(d => trunc(d, 10));
+                if(subgroups.length > legend_counts_in_row) {
+                    for(let i = legend_counts_in_row; i < subgroups.length; i++) {
+                        if(i % legend_counts_in_row === 0){
+                            strInClasp += `<tr style="height:${td_h}px;">`;
+                        }
+                        strInClasp += `
+                                <td>
+                                    <svg width="15px" height="15px">
+                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                        </rect>
+                                    </svg>
+                                </td>
+                                <td class="legend-text" style="width:${lengend_width}px">
+                                    ${subgroups[i]}
+                                </td>`;
+                    }
+                    strInClasp += `</tr></table>`;
+                    strClasp += '<button type="button" id="collapsible" class="collapsible">More...</button>';
+                    strClasp += `<div class="content">${strInClasp}</div>`;
+                }
+                legendDiv
+                    .style("left", margin.left + "px")
+                    .style("top", "10px")
+                    .html(strLegends + strClasp);
+                
+                let collTop = document.getElementById("collapsible");
+                collTop.addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    let content = this.nextElementSibling;
+                    if (content.style.display === "block") {
+                        content.style.display = "none";
+                        document.getElementById("collapsible").innerHTML = "More...";
+                        document.getElementById("svgGraph").style.marginTop = 0;
+                    } else {
+                        content.style.display = "block";
+                        document.getElementById("collapsible").innerHTML = "Less";
+                        document.getElementById("svgGraph").style.marginTop = td_h * Math.floor(subgroups.length / legend_counts_in_row)
+                    }
+                });
             break;
             case "bottom":
-                legendG = svg.append("g")
-                    .attr('class', 'legendGroup')
-                    .attr('transform', `translate(${margin.left}, ${height + margin.bottom/2})`);
-
-                each = legendG.selectAll("g.legends")
-                    .data(subgroups)
-                    .enter().append("g");
+                strLegends += `<table>`;
+                strLegends += `<tr style="height:${td_h}px;">`;
+                strInClasp += `<table>`;
+                if(subgroups.length <= legend_counts_in_row) {
+                    legend_counts_in_row = subgroups.length;
+                }
+                for(let i = 0; i < legend_counts_in_row; i++) {                    
+                    strLegends += `
+                            <td>
+                                <svg width="15px" height="15px">
+                                    <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                    </rect>
+                                </svg>
+                            </td>
+                            <td class="legend-text" style="width:${lengend_width}px">
+                                ${subgroups[i]}
+                            </td>`;
+                }
+                strLegends += `</tr></table>`;
                 
-                each.append("rect")
-                    .attr("x", (_, i) => i * 180)
-                    .attr("y", -10)
-                    .attr("width", 20)
-                    .attr("height", 20)
-                    .attr("fill", (d, i) => fill === 'pattern' ? `url('#${patterns[i]}')` : color(d));
-
-                each.append("text")
-                    .attr("x", (_, i) => i * 180 + 25)
-                    .attr("text-anchor", "start")
-                    .attr("font-size", "14")
-                    .attr("alignment-baseline", "central")
-                    .attr("fill", "black")                        
-                    .text(d => trunc(d, 10));
+                if(subgroups.length > legend_counts_in_row) {
+                    for(let i = legend_counts_in_row; i < subgroups.length; i++) {
+                        if(i % legend_counts_in_row === 0){
+                            strInClasp += `<tr style="height:${td_h}px;">`;
+                        }
+                        strInClasp += `
+                                <td>
+                                    <svg width="15px" height="15px">
+                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                        </rect>
+                                    </svg>
+                                </td>
+                                <td class="legend-text" style="width:${lengend_width}px">
+                                    ${subgroups[i]}
+                                </td>`;
+                    }
+                    strInClasp += `</tr></table>`;
+                    strClasp += '<button type="button" id="collapsible" class="collapsible">More...</button>';
+                    strClasp += `<div class="content">${strInClasp}</div>`;
+                }
+                legendDiv
+                    .style("left", margin.left + "px")
+                    .style("bottom", "10px")
+                    .html(strLegends + strClasp);
+                
+                let collBottom = document.getElementById("collapsible");                
+                collBottom.addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    let content = this.nextElementSibling;
+                    if (content.style.display === "block") {
+                        content.style.display = "none";
+                        document.getElementById("collapsible").innerHTML = "More...";
+                        document.getElementById("legend-area").style.bottom = 0;
+                    } else {
+                        content.style.display = "block";
+                        document.getElementById("collapsible").innerHTML = "Less";
+                        document.getElementById("legend-area").style.bottom = -td_h * Math.floor(subgroups.length / legend_counts_in_row) + "px";
+                    }
+                });
             break;
             case "left":
-                legendG = svg.append("g")
-                    .attr('class', 'legendGroup')
-                    .attr('transform', `translate(${-margin.left}, 0)`);
-
-                each = legendG.selectAll("g.legends")
-                    .data(subgroups)
-                    .enter().append("g");
-                
-                each.append("rect")                        
-                    .attr("y", (_, i) => i * 30 - 10)
-                    .attr("width", 20)
-                    .attr("height", 20)
-                    .attr("fill", (d, i) => fill === 'pattern' ? `url('#${patterns[i]}')` : color(d));
-
-                each.append("text")
-                    .attr("x", 25)
-                    .attr("y", (_, i) => i * 30)
-                    .attr("text-anchor", "start")
-                    .attr("font-size", "14")
-                    .attr("alignment-baseline", "central")
-                    .attr("fill", "black")                        
-                    .text(d => trunc(d, 10));
+                for(let i = 0; i < subgroups.length; i++) {
+                    if(i === 0){
+                        strLegends += `<table>`;
+                        strInClasp += `<table>`;
+                    }
+                    if(td_h * (i + 1) <= height - 50) {
+                        strLegends += `<tr style="height:${td_h}px;">
+                                <td>
+                                    <svg width="15px" height="15px">
+                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                        </rect>
+                                    </svg>
+                                </td>
+                                <td class="legend-text" style="width:${lengend_width}px">
+                                    ${subgroups[i]}
+                                </td>
+                            </tr>`;
+                    }else {
+                        strLegends += `</table>`;
+                        strInClasp += `<tr style="height:${td_h}px;">
+                                <td>
+                                    <svg width="15px" height="15px">
+                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                        </rect>
+                                    </svg>
+                                </td>
+                                <td class="legend-text" style="width:${lengend_width}px">
+                                    ${subgroups[i]}
+                                </td>
+                            </tr>`;
+                    }
+                }
+                strInClasp += `</table>`
+                legendDiv
+                    .style("left", "10px")
+                    .style("top", margin.top + "px")
+                    .html(strLegends);
+                actual_h = document.getElementById("legend-area").offsetHeight;
+                if(actual_h > height - 50) {//legend area's height is bigger than graph's height
+                    strClasp += '<button type="button" id="collapsible" class="collapsible">More...</button>';
+                    strClasp += `<div class="content">${strInClasp}</div>`;
+                }                
+                legendDiv.html(strLegends + strClasp);
+                let collLeft = document.getElementById("collapsible");                
+                collLeft.addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    let content = this.nextElementSibling;
+                    if (content.style.display === "block") {
+                        content.style.display = "none";
+                        document.getElementById("collapsible").innerHTML = "More...";
+                    } else {
+                        content.style.display = "block";
+                        document.getElementById("collapsible").innerHTML = "Less";
+                    }
+                });
             break;
             case "right":
-                legendG = svg.append("g")
-                    .attr('class', 'legendGroup')
-                    .attr('transform', `translate(${width }, 0)`);
-
-                each = legendG.selectAll("g.legends")
-                    .data(subgroups)
-                    .enter().append("g");
-                
-                each.append("rect")                        
-                    .attr("y", (_, i) => i * 30 - 10)
-                    .attr("width", 20)
-                    .attr("height", 20)
-                    .attr("fill", (d, i) => fill === 'pattern' ? `url('#${patterns[i]}')` : color(d));
-
-                each.append("text")
-                    .attr("x", 25)
-                    .attr("y", (_, i) => i * 30)
-                    .attr("text-anchor", "start")
-                    .attr("font-size", "14")
-                    .attr("alignment-baseline", "central")
-                    .attr("fill", "black")                        
-                    .text(d => trunc(d, 10));
+                for(let i = 0; i < subgroups.length; i++) {
+                    if(i === 0){
+                        strLegends += `<table>`;
+                        strInClasp += `<table>`;
+                    }
+                    if(td_h * (i + 1) <= height - 50) {
+                        strLegends += `<tr style="height:${td_h}px;">
+                                <td>
+                                    <svg width="15px" height="15px">
+                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                        </rect>
+                                    </svg>
+                                </td>
+                                <td class="legend-text" style="width:${lengend_width}px">
+                                    ${subgroups[i]}
+                                </td>
+                            </tr>`;
+                    }else {
+                        strLegends += `</table>`;
+                        strInClasp += `<tr style="height:${td_h}px;">
+                                <td>
+                                    <svg width="15px" height="15px">
+                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                        </rect>
+                                    </svg>
+                                </td>
+                                <td class="legend-text" style="width:${lengend_width}px">
+                                    ${subgroups[i]}
+                                </td>
+                            </tr>`;
+                    }
+                }
+                strInClasp += `</table>`
+                legendDiv
+                    .style("right", "10px")
+                    .style("top", margin.top + "px")
+                    .html(strLegends);
+                actual_h = document.getElementById("legend-area").offsetHeight;
+                if(actual_h > height - 50) {//legend area's height is bigger than graph's height
+                    strClasp += '<button type="button" id="collapsible" class="collapsible">More...</button>';
+                    strClasp += `<div class="content">${strInClasp}</div>`;
+                }                
+                legendDiv.html(strLegends + strClasp);
+                let collRight = document.getElementById("collapsible");                
+                collRight.addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    let content = this.nextElementSibling;
+                    if (content.style.display === "block") {
+                        content.style.display = "none";
+                        document.getElementById("collapsible").innerHTML = "More...";
+                    } else {
+                        content.style.display = "block";
+                        document.getElementById("collapsible").innerHTML = "Less";
+                    }
+                });
             break;
         }
+        
     })
 }
