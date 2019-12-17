@@ -26,9 +26,9 @@ p {
     font-size: 16px;
 }
 
-.collapsible {
-    background-color: #777;
-    color: white;
+.collapsible {    
+    color: grey;
+    font-weight: bold;
     cursor: pointer;
     padding: 18px;
     width: 100%;
@@ -40,10 +40,9 @@ p {
 button {
     padding: 2px 4px !important;
     width: auto !important;
+    background-color: transparent;
 }
-.active, .collapsible:hover {
-    background-color: #555;
-}
+
 
 .content {    
     display: none;
@@ -57,9 +56,49 @@ button {
   }
   
 
-  /* Style northward tooltips differently */
-  .d3-tip.n:after {
+/* Style northward tooltips differently */
+.d3-tip.n:after {
     margin: -1px 0 0 0;
     top: 100%;
     left: 0;
-  }
+}
+
+#graph {
+    display: flex;
+    justify-content: center;
+}
+
+#left-legend {
+    display: flex;    
+    justify-content: center;
+    flex-direction: column;
+}
+
+#right-legend {
+    display: flex;    
+    justify-content: center;
+    flex-direction: column;
+}
+
+.row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding-left: 16px;
+    padding-right: 16px;    
+}
+.row-lr {
+    display: flex;
+    padding: 16px;
+    flex-direction: column;
+}
+.col {
+    display: flex;
+    align-items: center;
+}
+
+.col-content {
+    display: flex;    
+    align-items: center;
+    padding: 4px;
+}

@@ -23,9 +23,9 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
 
     d3.csv(filename, function (data) {
         console.log(data, 'ddd')
-        const limit_bar_width = 10, label_available = 60;
-        let margin = {top: 150, right: 150, bottom: 200, left: 150},
-            width = parseInt(containerWidth) - margin.left - margin.right,
+        const limit_bar_width = 10, label_available = 60, lr_legend_width = 280;
+        let margin = {top: 20, right: 20, bottom: 120, left: 20},
+            width = legend === 'bottom' || legend === 'top' ? parseInt(containerWidth) - margin.left - margin.right : parseInt(containerWidth) - lr_legend_width - margin.left - margin.right,
             height = parseInt(containerHeight) - margin.top - margin.bottom;
 
         let columns = data.columns,
@@ -42,8 +42,6 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
             .domain(subgroups)
             .range(fill === 'single' ? singleColors : fullColors)        
         
-
-        // append the svg object to the body of the page
         d3.select("#graph").select("*").remove();
         let svg = d3.select("#graph")
             .append("svg")
@@ -55,6 +53,131 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
                 "translate(" + margin.left + "," + margin.top + ")");
                 
         svg = appendFilterAndPattern(svg);
+        //append legend
+        document.getElementById('graph-container').style.display = legend === 'top' || legend === 'bottom' ? 'block' : 'flex';
+        const legendDiv = document.getElementById(`${legend}-legend`);
+        
+        let strLegends = '',
+            strInClasp = '',
+            strClasp = '',
+            col_counts = 7,
+            row_counts = 7,
+            coll;        
+
+        if(legend === 'top' || legend === 'bottom') {
+            strLegends += `<div class="row">`;
+            strInClasp += `<div class="row">`;
+            if(subgroups.length <= col_counts) {
+                col_counts = subgroups.length;
+            }
+            for(let i = 0; i < col_counts; i++) {
+                strLegends += `
+                        <div class="col" style="width:calc(${Math.floor(100 / col_counts)}% - 32px)">
+                            <div class="col-content">
+                                <div>
+                                    <svg width="15px" height="15px">
+                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                        </rect>
+                                    </svg>
+                                </div>
+                                <span style="padding-left:8px">${subgroups[i]}</span>
+                            </div>
+                        </div>`;
+            }
+            strLegends += `</div>`;
+            if(subgroups.length > col_counts) {
+                for(let i = col_counts; i < subgroups.length; i++) {
+                    strInClasp += `<div class="col" style="width:${Math.floor(100 / col_counts)}%">
+                        <div class="col-content">
+                            <div>
+                                <svg width="15px" height="15px">
+                                    <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                    </rect>
+                                </svg>
+                            </div>
+                            <span style="margin-left:8px">${subgroups[i]}</span>
+                        </div>
+                    </div>`;
+                }
+                strInClasp += `</div>`;
+                strClasp += '<button type="button" id="collapsible" class="collapsible">More &#x25BC;</button>';
+                strClasp += `<div class="content">${strInClasp}</div>`;
+            }
+            
+            legendDiv.innerHTML = strLegends + strClasp;
+            
+            coll = document.getElementById("collapsible");
+            if(coll){
+                coll.addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    let content = this.nextElementSibling;
+                    if (content.style.display === "block") {
+                        content.style.display = "none";
+                        document.getElementById("collapsible").innerHTML = "More &#x25BC;";                            
+                    } else {
+                        content.style.display = "block";
+                        document.getElementById("collapsible").innerHTML = "Less &#x25B2;";                            
+                    }
+                });
+            }
+        }else {
+            strLegends += `<div class="row-lr">`;
+            strInClasp += `<div class="row-lr">`;
+            if(subgroups.length <= row_counts) {
+                row_counts = subgroups.length;
+            }
+            for(let i = 0; i < row_counts; i++) {
+                strLegends += `
+                        <div class="col">
+                            <div class="col-content">
+                                <div>
+                                    <svg width="15px" height="15px">
+                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                        </rect>
+                                    </svg>
+                                </div>
+                                <span style="padding-left:8px">${subgroups[i]}</span>
+                            </div>
+                        </div>`;                
+            }
+            strLegends += `</div>`;
+            
+            if(subgroups.length > row_counts) {
+                for(let i = row_counts; i < subgroups.length; i++) {
+                    strInClasp += `<div class="col">
+                        <div class="col-content">
+                            <div>
+                                <svg width="15px" height="15px">
+                                    <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
+                                    </rect>
+                                </svg>
+                            </div>
+                            <span style="margin-left:8px">${subgroups[i]}</span>
+                        </div>
+                    </div>`;
+                }
+                strInClasp += `</div>`;
+                strClasp += '<button type="button" id="collapsible" class="collapsible">More &#x25BC;</button>';
+                strClasp += `<div class="content">${strInClasp}</div>`;
+            }
+            
+            legendDiv.innerHTML = strLegends + strClasp;
+            
+            coll = document.getElementById("collapsible");
+            if(coll){
+                coll.addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    let content = this.nextElementSibling;
+                    if (content.style.display === "block") {
+                        content.style.display = "none";
+                        document.getElementById("collapsible").innerHTML = "More &#x25BC;";                            
+                    } else {
+                        content.style.display = "block";
+                        document.getElementById("collapsible").innerHTML = "Less &#x25B2;";                            
+                    }
+                });
+            }
+        }
 
         const tip = d3.tip()
             .attr('class', 'd3-tip')
@@ -239,259 +362,6 @@ function appendGroupBar(filename, dim1, dim2, m, fill, end, sorttype, legend) {
 
         axisY.selectAll(".tick").remove();
         axisY.select(".domain").remove();
-        
-        //add legend
-        const legendDiv = d3.select("#graph").append("div")
-            .attr("id", "legend-area")
-            .style("position", "absolute");
-        let strLegends = '',
-            strInClasp = '',
-            strClasp = '',            
-            lengend_width = 135,
-            legend_counts_in_row = Math.floor(width/lengend_width),
-            td_h = 40,
-            actual_h = 0,
-            visual_h = 0;
-            console.log(legend_counts_in_row, 'pp')
-
-        switch (legend) {
-            case "top":
-                strLegends += `<table>`;
-                strLegends += `<tr style="height:${td_h}px;">`;
-                strInClasp += `<table>`;
-                if(subgroups.length <= legend_counts_in_row) {
-                    legend_counts_in_row = subgroups.length;
-                }
-                for(let i = 0; i < legend_counts_in_row; i++) {                    
-                    strLegends += `
-                            <td>
-                                <svg width="15px" height="15px">
-                                    <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
-                                    </rect>
-                                </svg>
-                            </td>
-                            <td class="legend-text" style="width:${lengend_width}px">
-                                ${subgroups[i]}
-                            </td>`;
-                }
-                strLegends += `</tr></table>`;
-                
-                if(subgroups.length > legend_counts_in_row) {
-                    for(let i = legend_counts_in_row; i < subgroups.length; i++) {
-                        if(i % legend_counts_in_row === 0){
-                            strInClasp += `<tr style="height:${td_h}px;">`;
-                        }
-                        strInClasp += `
-                                <td>
-                                    <svg width="15px" height="15px">
-                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
-                                        </rect>
-                                    </svg>
-                                </td>
-                                <td class="legend-text" style="width:${lengend_width}px">
-                                    ${subgroups[i]}
-                                </td>`;
-                    }
-                    strInClasp += `</tr></table>`;
-                    strClasp += '<button type="button" id="collapsible" class="collapsible">More...</button>';
-                    strClasp += `<div class="content">${strInClasp}</div>`;
-                }
-                legendDiv
-                    .style("left", margin.left + "px")
-                    .style("top", "10px")
-                    .html(strLegends + strClasp);
-                
-                let collTop = document.getElementById("collapsible");
-                collTop.addEventListener("click", function() {
-                    this.classList.toggle("active");
-                    let content = this.nextElementSibling;
-                    if (content.style.display === "block") {
-                        content.style.display = "none";
-                        document.getElementById("collapsible").innerHTML = "More...";
-                        document.getElementById("svgGraph").style.marginTop = 0;
-                    } else {
-                        content.style.display = "block";
-                        document.getElementById("collapsible").innerHTML = "Less";
-                        document.getElementById("svgGraph").style.marginTop = td_h * Math.floor(subgroups.length / legend_counts_in_row)
-                    }
-                });
-            break;
-            case "bottom":
-                strLegends += `<table>`;
-                strLegends += `<tr style="height:${td_h}px;">`;
-                strInClasp += `<table>`;
-                if(subgroups.length <= legend_counts_in_row) {
-                    legend_counts_in_row = subgroups.length;
-                }
-                for(let i = 0; i < legend_counts_in_row; i++) {                    
-                    strLegends += `
-                            <td>
-                                <svg width="15px" height="15px">
-                                    <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
-                                    </rect>
-                                </svg>
-                            </td>
-                            <td class="legend-text" style="width:${lengend_width}px">
-                                ${subgroups[i]}
-                            </td>`;
-                }
-                strLegends += `</tr></table>`;
-                
-                if(subgroups.length > legend_counts_in_row) {
-                    for(let i = legend_counts_in_row; i < subgroups.length; i++) {
-                        if(i % legend_counts_in_row === 0){
-                            strInClasp += `<tr style="height:${td_h}px;">`;
-                        }
-                        strInClasp += `
-                                <td>
-                                    <svg width="15px" height="15px">
-                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
-                                        </rect>
-                                    </svg>
-                                </td>
-                                <td class="legend-text" style="width:${lengend_width}px">
-                                    ${subgroups[i]}
-                                </td>`;
-                    }
-                    strInClasp += `</tr></table>`;
-                    strClasp += '<button type="button" id="collapsible" class="collapsible">More...</button>';
-                    strClasp += `<div class="content">${strInClasp}</div>`;
-                }
-                legendDiv
-                    .style("left", margin.left + "px")
-                    .style("bottom", "10px")
-                    .html(strLegends + strClasp);
-                
-                let collBottom = document.getElementById("collapsible");                
-                collBottom.addEventListener("click", function() {
-                    this.classList.toggle("active");
-                    let content = this.nextElementSibling;
-                    if (content.style.display === "block") {
-                        content.style.display = "none";
-                        document.getElementById("collapsible").innerHTML = "More...";
-                        document.getElementById("legend-area").style.bottom = 0;
-                    } else {
-                        content.style.display = "block";
-                        document.getElementById("collapsible").innerHTML = "Less";
-                        document.getElementById("legend-area").style.bottom = -td_h * Math.floor(subgroups.length / legend_counts_in_row) + "px";
-                    }
-                });
-            break;
-            case "left":
-                for(let i = 0; i < subgroups.length; i++) {
-                    if(i === 0){
-                        strLegends += `<table>`;
-                        strInClasp += `<table>`;
-                    }
-                    if(td_h * (i + 1) <= height - 50) {
-                        strLegends += `<tr style="height:${td_h}px;">
-                                <td>
-                                    <svg width="15px" height="15px">
-                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
-                                        </rect>
-                                    </svg>
-                                </td>
-                                <td class="legend-text" style="width:${lengend_width}px">
-                                    ${subgroups[i]}
-                                </td>
-                            </tr>`;
-                    }else {
-                        strLegends += `</table>`;
-                        strInClasp += `<tr style="height:${td_h}px;">
-                                <td>
-                                    <svg width="15px" height="15px">
-                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
-                                        </rect>
-                                    </svg>
-                                </td>
-                                <td class="legend-text" style="width:${lengend_width}px">
-                                    ${subgroups[i]}
-                                </td>
-                            </tr>`;
-                    }
-                }
-                strInClasp += `</table>`
-                legendDiv
-                    .style("left", "10px")
-                    .style("top", margin.top + "px")
-                    .html(strLegends);
-                actual_h = document.getElementById("legend-area").offsetHeight;
-                if(actual_h > height - 50) {//legend area's height is bigger than graph's height
-                    strClasp += '<button type="button" id="collapsible" class="collapsible">More...</button>';
-                    strClasp += `<div class="content">${strInClasp}</div>`;
-                }                
-                legendDiv.html(strLegends + strClasp);
-                let collLeft = document.getElementById("collapsible");                
-                collLeft.addEventListener("click", function() {
-                    this.classList.toggle("active");
-                    let content = this.nextElementSibling;
-                    if (content.style.display === "block") {
-                        content.style.display = "none";
-                        document.getElementById("collapsible").innerHTML = "More...";
-                    } else {
-                        content.style.display = "block";
-                        document.getElementById("collapsible").innerHTML = "Less";
-                    }
-                });
-            break;
-            case "right":
-                for(let i = 0; i < subgroups.length; i++) {
-                    if(i === 0){
-                        strLegends += `<table>`;
-                        strInClasp += `<table>`;
-                    }
-                    if(td_h * (i + 1) <= height - 50) {
-                        strLegends += `<tr style="height:${td_h}px;">
-                                <td>
-                                    <svg width="15px" height="15px">
-                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
-                                        </rect>
-                                    </svg>
-                                </td>
-                                <td class="legend-text" style="width:${lengend_width}px">
-                                    ${subgroups[i]}
-                                </td>
-                            </tr>`;
-                    }else {
-                        strLegends += `</table>`;
-                        strInClasp += `<tr style="height:${td_h}px;">
-                                <td>
-                                    <svg width="15px" height="15px">
-                                        <rect width="15px" height="15px" fill="${fill === 'pattern' ? `url('#${patterns[i]}')` : color(subgroups[i])}">
-                                        </rect>
-                                    </svg>
-                                </td>
-                                <td class="legend-text" style="width:${lengend_width}px">
-                                    ${subgroups[i]}
-                                </td>
-                            </tr>`;
-                    }
-                }
-                strInClasp += `</table>`
-                legendDiv
-                    .style("right", "10px")
-                    .style("top", margin.top + "px")
-                    .html(strLegends);
-                actual_h = document.getElementById("legend-area").offsetHeight;
-                if(actual_h > height - 50) {//legend area's height is bigger than graph's height
-                    strClasp += '<button type="button" id="collapsible" class="collapsible">More...</button>';
-                    strClasp += `<div class="content">${strInClasp}</div>`;
-                }                
-                legendDiv.html(strLegends + strClasp);
-                let collRight = document.getElementById("collapsible");                
-                collRight.addEventListener("click", function() {
-                    this.classList.toggle("active");
-                    let content = this.nextElementSibling;
-                    if (content.style.display === "block") {
-                        content.style.display = "none";
-                        document.getElementById("collapsible").innerHTML = "More...";
-                    } else {
-                        content.style.display = "block";
-                        document.getElementById("collapsible").innerHTML = "Less";
-                    }
-                });
-            break;
-        }
         
     })
 }
